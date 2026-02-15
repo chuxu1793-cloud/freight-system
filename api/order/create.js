@@ -21,17 +21,26 @@ export default async function handler(req, res) {
 
   try {
     const orderData = req.body;
-    // 1. 生成客户ID和默认客户信息
+    // 1. 生成客户ID和适配 clients 表的默认客户信息
     const clientId = uuidv4();
     const clientData = {
       id: clientId,
-      name: `默认客户_${clientId.slice(0, 8)}`, // 截取UUID前8位做客户名，易识别
-      contact: '未知联系人',
-      phone: '未知电话',
-      created_at: new Date().toISOString()
+      client_no: `C${Date.now().toString().slice(-8)}`, // 生成唯一客户编号（C+时间戳后8位）
+      client_type: '普通客户', // 默认客户类型
+      name: `默认客户_${clientId.slice(0, 8)}`, // 客户名称（UUID前8位）
+      contact_person: '未知联系人', // 对应表的 contact_person 字段
+      contact_phone: '未知电话', // 对应表的 contact_phone 字段
+      contact_email: null,
+      address: null,
+      tax_no: null,
+      bank_info: null,
+      remark: '订单创建时自动生成的默认客户',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      created_by: 'system' // 系统自动创建
     };
 
-    // 2. 先插入客户记录（解决外键约束）
+    // 2. 先插入客户记录（适配你的 clients 表结构）
     const { error: clientError } = await supabase
       .from('clients')
       .insert([clientData]);
@@ -48,13 +57,13 @@ export default async function handler(req, res) {
       });
     }
 
-    // 4. 插入订单（使用刚创建的客户ID）
+    // 4. 插入订单（使用刚创建的客户ID，满足外键约束）
     const { data, error } = await supabase
       .from('orders')
       .insert([
         {
           ...orderData,
-          client_id: clientId,
+          client_id: clientId, // 关联自动生成的客户ID
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           is_deleted: false,
@@ -65,7 +74,7 @@ export default async function handler(req, res) {
 
     if (error) throw new Error(`插入订单失败: ${error.message}`);
 
-    // 5. 返回成功结果（包含客户信息）
+    // 5. 返回成功结果（包含订单和客户信息）
     return res.status(201).json({
       success: true,
       message: '订单创建成功（已自动创建关联客户）',
