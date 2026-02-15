@@ -1,5 +1,6 @@
 // api/order/update.js
-import { createClient } from '../supabase.js';
+// 关键修改：直接导入 supabase 实例（默认导出），而非 createClient 函数
+import supabase from '../supabase.js';
 
 /**
  * 更新订单状态接口
@@ -44,8 +45,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 5. 连接 Supabase 并更新订单
-    const supabase = createClient();
+    // 5. 连接 Supabase 并更新订单（直接用导入的 supabase 实例）
     const { data, error } = await supabase
       .from('orders') // 操作 orders 表
       .update({
