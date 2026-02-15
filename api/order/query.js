@@ -47,10 +47,23 @@ export default async function handler(req, res) {
         total: count || 0
       }
     });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: '查询失败：' + error.message
+  }catch (error) {
+    // 打印完整错误信息到 Vercel 日志，方便排查
+    console.error('Query API Error:', {
+        message: error.message,
+        stack: error.stack,
+        supabaseUrl: !!process.env.SUPABASE_URL, // 检查 URL 是否存在
+        supabaseKey: !!process.env.SUPABASE_SERVICE_KEY || !!process.env.SUPABASE_ANON_KEY // 检查密钥是否存在
     });
-  }
+    
+    return res.status(500).json({
+        success: false,
+        message: '查询失败：' + error.message,
+        // 开发环境返回完整错误，方便调试
+        debug: {
+        hasUrl: !!process.env.SUPABASE_URL,
+        hasKey: !!process.env.SUPABASE_SERVICE_KEY || !!process.env.SUPABASE_ANON_KEY
+        }
+    });
+    }
 }
