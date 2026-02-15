@@ -2,6 +2,16 @@
 import supabase from '../supabase.js';
 
 export default async function handler(req, res) {
+  // ========== 新增：处理 OPTIONS 预检请求 ==========
+  if (req.method === 'OPTIONS') {
+    // 配置跨域响应头，必须返回 200
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.status(200).end();
+    return;
+  }
+
   // 1. 限制请求方法为 POST
   if (req.method !== 'POST') {
     return res.status(405).json({
@@ -30,7 +40,9 @@ export default async function handler(req, res) {
         {
           ...orderData,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          is_deleted: false, // 新增：默认未删除，和其他接口保持一致
+          deleted_at: null   // 新增：默认无删除时间
         }
       ])
       .select();
@@ -40,7 +52,7 @@ export default async function handler(req, res) {
     }
 
     // 4. 返回成功结果
-    return res.status(200).json({
+    return res.status(201).json({ // 用 201 Created 更符合 RESTful 规范
       success: true,
       message: '订单创建成功',
       data: data[0]
