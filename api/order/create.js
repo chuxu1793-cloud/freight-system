@@ -1,6 +1,6 @@
 // api/order/create.js
 import supabase from '../supabase.js';
-import { v4 as uuidv4 } from 'uuid'; // 先安装：npm install uuid
+const uuidv4 = require('uuid/v4'); // 改用 CommonJS 导入
 
 export default async function handler(req, res) {
   // 处理 OPTIONS 预检请求
