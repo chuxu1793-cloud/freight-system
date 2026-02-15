@@ -1,8 +1,9 @@
 // api/order/create.js
 import supabase from '../supabase.js';
+import { v4 as uuidv4 } from 'uuid'; // 先安装：npm install uuid
 
 export default async function handler(req, res) {
-  // 处理 OPTIONS 预检请求（解决跨域）
+  // 处理 OPTIONS 预检请求
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -11,7 +12,6 @@ export default async function handler(req, res) {
     return;
   }
 
-  // 限制请求方法为 POST
   if (req.method !== 'POST') {
     return res.status(405).json({
       success: false,
@@ -22,8 +22,11 @@ export default async function handler(req, res) {
   try {
     const orderData = req.body;
 
-    // 校验必填字段（货代核心字段）
-    const requiredFields = ['order_no', 'client_id', 'freight_type', 'pol', 'pod', 'goods_name', 'freight', 'total_amount', 'currency', 'order_status'];
+    // 1. 自动生成 client_id（覆盖前端传的任何值）
+    const clientId = uuidv4();
+
+    // 2. 校验必填字段（移除 client_id，因为后端自动生成）
+    const requiredFields = ['order_no', 'freight_type', 'pol', 'pod', 'goods_name', 'freight', 'total_amount', 'currency', 'order_status'];
     const missingFields = requiredFields.filter(field => !orderData[field]);
     if (missingFields.length > 0) {
       return res.status(400).json({
@@ -32,32 +35,30 @@ export default async function handler(req, res) {
       });
     }
 
-    // 插入订单到 Supabase（补充软删除字段默认值）
+    // 3. 插入订单（使用后端生成的 client_id）
     const { data, error } = await supabase
       .from('orders')
       .insert([
         {
           ...orderData,
+          client_id: clientId, // 强制使用后端生成的ID
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          is_deleted: false, // 默认未删除
-          deleted_at: null   // 默认无删除时间
+          is_deleted: false,
+          deleted_at: null
         }
       ])
       .select();
 
-    if (error) {
-      throw new Error(`Supabase 插入失败: ${error.message}`);
-    }
+    if (error) throw new Error(`Supabase 插入失败: ${error.message}`);
 
-    // 返回成功结果（201 更符合 RESTful 规范）
+    // 4. 返回包含自动生成 client_id 的结果
     return res.status(201).json({
       success: true,
       message: '订单创建成功',
       data: data[0]
     });
   } catch (err) {
-    // 打印详细错误日志到 Vercel，方便排查
     console.error('CREATE ORDER ERROR:', {
       message: err.message,
       stack: err.stack,
